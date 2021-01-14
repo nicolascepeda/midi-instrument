@@ -23,7 +23,7 @@ class PitchSpiral extends React.Component<Props, State> {
     // @ts-ignore
     private spiralCanvas: HTMLCanvasElement;
     // @ts-ignore
-    private textOutput : HTMLElement;
+    private textOutput: HTMLElement;
     // @ts-ignore
     private spiralCtx: CanvasRenderingContext2D;
 
@@ -36,7 +36,7 @@ class PitchSpiral extends React.Component<Props, State> {
 
         this.spiralCtx.fillRect(0, 0, this.spiralCanvas.width, this.spiralCanvas.height);
 
-        this.init()
+        this.init();
     }
 
     init() {
@@ -50,13 +50,37 @@ class PitchSpiral extends React.Component<Props, State> {
                     analyserNode.fftSize = fftSize;
                     analyserNode.smoothingTimeConstant = 0.2;
                     source.connect(analyserNode);
-                    this.draw(analyserNode);
+                    this.draw2(analyserNode);
                 })
                 .catch(function (err) {
                     console.log('The following gUM error occured: ' + err);
                 });
         } else {
             console.log('getUserMedia not supported on your browser!');
+        }
+    }
+
+    draw2(analyserNode: AnalyserNode) {
+        const bufferLength: number = analyserNode.frequencyBinCount;
+        const dataArray: Float32Array = new Float32Array(bufferLength);
+        //Schedule next redraw
+        requestAnimationFrame(() => this.draw2(analyserNode));
+
+        //Get spectrum data
+        analyserNode.getFloatFrequencyData(dataArray);
+
+        //Draw black background
+        this.spiralCtx.fillStyle = 'rgb(0, 0, 0)';
+        this.spiralCtx.fillRect(0, 0, this.spiralCanvas.width, this.spiralCanvas.height);
+
+        //Draw spectrum
+        const barWidth = (this.spiralCanvas.width / bufferLength) * 2.5;
+        let posX = 0;
+        for (let i = 0; i < bufferLength; i++) {
+            const barHeight = (dataArray[i] + 140) * 2;
+            this.spiralCtx.fillStyle = 'rgb(' + Math.floor(barHeight + 100) + ', 50, 50)';
+            this.spiralCtx.fillRect(posX, this.spiralCanvas.height - barHeight / 2, barWidth, barHeight / 2);
+            posX += barWidth + 1;
         }
     }
 
@@ -92,9 +116,12 @@ class PitchSpiral extends React.Component<Props, State> {
                 if (score > bestScore) {
                     bestScore = score;
                     bestIndex = ii;
+
+                    console.log("left:", left, " middle: ", middle, " right: ", right);
                 }
             }
         }
+
         const dominantFrequency = this.indexToFrequency(bestIndex, bufferLength);
         const score = bestScore;
 
@@ -177,7 +204,7 @@ class PitchSpiral extends React.Component<Props, State> {
     }
 
     indexToFrequency(i: number, bufferLength: number) {
-        return i / bufferLength * 22050 ;
+        return i / bufferLength * 22050;
     }
 
     frequencyToIndex(f: number, bufferLength: number) {
