@@ -1,0 +1,11 @@
+.pitch-spiral {
+    width: 100%;
+    heigth: 100%;
+    background: black;
+    text-align: center;
+}
+
+.pitch-spiral canvas {
+    width: 500px;
+    height: 500px;
+}
