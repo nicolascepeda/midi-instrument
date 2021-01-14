@@ -14,17 +14,23 @@ const pitchRange = 3;
 const fftSize = 1024 * 16;
 const lineWidthPerDB = 0.002;
 const innerLineLevel = 20;
-const zeroPitchFrequency = 440 * Math.pow(2, 3 / 12);
+const offsetCorrection = 34;
+
+const zeroPitchFrequency = (440 - offsetCorrection) * Math.pow(2, 3 / 12);
 const pitchLabels = ["c", "", "d", "", "e", "f", "", "g", "", "a", "", "b"];
 
 class PitchSpiral extends React.Component<Props, State> {
     // @ts-ignore
     private spiralCanvas: HTMLCanvasElement;
     // @ts-ignore
+    private textOutput : HTMLElement;
+    // @ts-ignore
     private spiralCtx: CanvasRenderingContext2D;
 
     async componentDidMount() {
         this.spiralCanvas = document.getElementById("this.spiralCanvas") as HTMLCanvasElement;
+
+        this.textOutput = document.getElementById("textOutput")!;
         this.spiralCtx = this.spiralCanvas.getContext('2d')!;
         this.spiralCtx.fillStyle = 'rgb(0, 0, 0)';
 
@@ -70,11 +76,13 @@ class PitchSpiral extends React.Component<Props, State> {
 
         let bestIndex = 0;
         let bestScore = 0;
+        let countCandidates = 0;
         for (let i = indices.low; i < indices.high; i++) {
             const left = dataArray[i - 1];
             const middle = dataArray[i];
             const right = dataArray[i + 1];
             if (middle > noiseLevel && middle >= left && middle >= right) {
+                countCandidates++;
                 const ii = i + this.interpolateExtremum(left, middle, right);
                 let score = 0;
                 for (let j = 1; j <= harmonics && j * ii <= bufferLength - 1; j++) {
@@ -89,6 +97,11 @@ class PitchSpiral extends React.Component<Props, State> {
         }
         const dominantFrequency = this.indexToFrequency(bestIndex, bufferLength);
         const score = bestScore;
+
+        this.textOutput.innerHTML =
+            "dominant frequency: " + (dominantFrequency + offsetCorrection).toFixed(2) + "Hz" +
+            "<br>" + "score: " + score.toFixed(1) +
+            "<br>" + "candidates: " + countCandidates;
 
         this.spiralCtx.fillStyle = 'rgb(0, 0, 0)';
         this.spiralCtx.fillRect(0, 0, this.spiralCanvas.width, this.spiralCanvas.height);
@@ -164,7 +177,7 @@ class PitchSpiral extends React.Component<Props, State> {
     }
 
     indexToFrequency(i: number, bufferLength: number) {
-        return i / bufferLength * 22050;
+        return i / bufferLength * 22050 ;
     }
 
     frequencyToIndex(f: number, bufferLength: number) {
@@ -233,6 +246,7 @@ class PitchSpiral extends React.Component<Props, State> {
     render() {
         return <div className="pitch-spiral">
             <canvas id="this.spiralCanvas" width={500} height={500}></canvas>
+            <div id="textOutput">hoi</div>
         </div>;
     }
 }
