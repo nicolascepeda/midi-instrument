@@ -1,7 +1,7 @@
 import React from 'react';
 import './PitchVisualization.css';
 
-export type PitchDisplayType = "LINEAR" | "SPIRAL";
+export type PitchDisplayType = "LINEAR" | "SPIRAL" | "OSCILLATOR";
 
 interface Props {
     displayType : PitchDisplayType;
@@ -14,30 +14,31 @@ interface State {
 const noiseLevel = -60;
 const harmonics = 10;
 const pitchRange = 3;
-const fftSize = 1024 * 16;
+//const fftSize = 1024 * 16 * 2;
+const fftSize = 2048;
 const lineWidthPerDB = 0.002;
 const innerLineLevel = 20;
 const offsetCorrection = 34;
 
 const zeroPitchFrequency = (440 - offsetCorrection) * Math.pow(2, 3 / 12);
-const pitchLabels = ["c", "", "d", "", "e", "f", "", "g", "", "a", "", "b"];
+const pitchLabels = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
 class PitchVisualization extends React.Component<Props, State> {
     // @ts-ignore
-    private spiralCanvas: HTMLCanvasElement;
+    private canvas: HTMLCanvasElement;
+    // @ts-ignore
+    private canvasCtx: CanvasRenderingContext2D;
     // @ts-ignore
     private textOutput: HTMLElement;
-    // @ts-ignore
-    private spiralCtx: CanvasRenderingContext2D;
 
     async componentDidMount() {
-        this.spiralCanvas = document.getElementById("this.spiralCanvas") as HTMLCanvasElement;
+        this.canvas = document.getElementById("this.canvas") as HTMLCanvasElement;
 
         this.textOutput = document.getElementById("textOutput")!;
-        this.spiralCtx = this.spiralCanvas.getContext('2d')!;
-        this.spiralCtx.fillStyle = 'rgb(0, 0, 0)';
+        this.canvasCtx = this.canvas.getContext('2d')!;
+        this.canvasCtx.fillStyle = 'rgb(0, 0, 0)';
 
-        this.spiralCtx.fillRect(0, 0, this.spiralCanvas.width, this.spiralCanvas.height);
+        this.canvasCtx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         this.init();
     }
@@ -67,6 +68,7 @@ class PitchVisualization extends React.Component<Props, State> {
         switch(this.props.displayType){
             case "LINEAR": return this.drawLinear(analyserNode);
             case "SPIRAL" : return this.drawSpiral(analyserNode);
+            case "OSCILLATOR" : return this.drawOscillator(analyserNode);
         }
     }
 
@@ -80,18 +82,54 @@ class PitchVisualization extends React.Component<Props, State> {
         analyserNode.getFloatFrequencyData(dataArray);
 
         //Draw black background
-        this.spiralCtx.fillStyle = 'rgb(0, 0, 0)';
-        this.spiralCtx.fillRect(0, 0, this.spiralCanvas.width, this.spiralCanvas.height);
+        this.canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+        this.canvasCtx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         //Draw spectrum
-        const barWidth = (this.spiralCanvas.width / bufferLength) * 2.5;
+        const barWidth = (this.canvas.width / bufferLength) * 2.5;
         let posX = 0;
         for (let i = 0; i < bufferLength; i++) {
             const barHeight = (dataArray[i] + 140) * 2;
-            this.spiralCtx.fillStyle = 'rgb(' + Math.floor(barHeight + 100) + ', 230, 230)';
-            this.spiralCtx.fillRect(posX, this.spiralCanvas.height - barHeight / 2, barWidth, barHeight / 2);
+            this.canvasCtx.fillStyle = 'rgb(' + Math.floor(barHeight + 100) + ', 230, 230)';
+            this.canvasCtx.fillRect(posX, this.canvas.height - barHeight / 2, barWidth, barHeight / 2);
             posX += barWidth + 1;
         }
+    }
+
+    drawOscillator(analyserNode: AnalyserNode) {
+        var bufferLength = analyserNode.frequencyBinCount ;
+        var dataArray = new Uint8Array(bufferLength);
+        analyserNode.getByteTimeDomainData(dataArray);
+
+        requestAnimationFrame(() => this.draw(analyserNode));
+
+        this.canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+        this.canvasCtx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+
+        this.canvasCtx.lineWidth = 2;
+        this.canvasCtx.strokeStyle = 'rgb(255, 255, 255)';
+
+        this.canvasCtx.beginPath();
+
+        let sliceWidth = this.canvas.width * 1.0 / bufferLength;
+        let x = 0;
+        console.log(dataArray);
+
+        for(let i = 0; i < bufferLength; i++) {
+            let v = dataArray[i] / 128.0;
+            let y = v * this.canvas.height/2;
+
+            if(i === 0) {
+                this.canvasCtx.moveTo(x, y);
+            } else {
+                this.canvasCtx.lineTo(x, y);
+            }
+
+            x += sliceWidth;
+        }
+
+        this.canvasCtx.lineTo(this.canvas.width, this.canvas.height/2);
+        this.canvasCtx.stroke();
     }
 
     drawSpiral(analyserNode: AnalyserNode) {
@@ -126,8 +164,6 @@ class PitchVisualization extends React.Component<Props, State> {
                 if (score > bestScore) {
                     bestScore = score;
                     bestIndex = ii;
-
-                    console.log("left:", left, " middle: ", middle, " right: ", right);
                 }
             }
         }
@@ -135,19 +171,15 @@ class PitchVisualization extends React.Component<Props, State> {
         const dominantFrequency = this.indexToFrequency(bestIndex, bufferLength);
         const score = bestScore;
 
-        this.textOutput.innerHTML =
-            "dominant frequency: " + (dominantFrequency + offsetCorrection).toFixed(2) + "Hz" +
-            "<br>" + "score: " + score.toFixed(1) +
-            "<br>" + "candidates: " + countCandidates;
-
-        this.spiralCtx.fillStyle = 'rgb(0, 0, 0)';
-        this.spiralCtx.fillRect(0, 0, this.spiralCanvas.width, this.spiralCanvas.height);
+        this.textOutput.innerHTML = `Dominant Frequency: ${(dominantFrequency + offsetCorrection).toFixed(2)}Hz <BR/> Score: ${score.toFixed(1)}<BR/>Candidates: ${countCandidates}`;
+        this.canvasCtx.fillStyle = 'rgb(0, 0, 0)';
+        this.canvasCtx.fillRect(0, 0, this.canvas.width, this.canvas.height);
 
         const offsets = this.drawingOffsets();
 
-        this.spiralCtx.font = offsets.radius * 0.1 + "px DUMMY";
-        this.spiralCtx.textAlign = "center";
-        this.spiralCtx.textBaseline = "middle";
+        this.canvasCtx.font = offsets.radius * 0.1 + "px DUMMY";
+        this.canvasCtx.textAlign = "center";
+        this.canvasCtx.textBaseline = "middle";
         const r0 = offsets.radius * (0.5 - pitchRange * 0.1 - 0.05);
         const r1 = offsets.radius * (0.5 + pitchRange * 0.1 + 0.05);
         const r2 = offsets.radius * (0.5 + pitchRange * 0.1 + 0.10);
@@ -157,16 +189,16 @@ class PitchVisualization extends React.Component<Props, State> {
             let s = Math.sin(alpha);
             let center = offsets.center;
             if (pitchLabels[i] !== "") {
-                this.spiralCtx.strokeStyle = "white";
+                this.canvasCtx.strokeStyle = "white";
             } else {
-                this.spiralCtx.strokeStyle = "grey";
+                this.canvasCtx.strokeStyle = "grey";
             }
-            this.spiralCtx.beginPath();
-            this.spiralCtx.moveTo(center.x + r0 * s, center.y - r0 * c);
-            this.spiralCtx.lineTo(center.x + r1 * s, center.y - r1 * c);
-            this.spiralCtx.stroke();
-            this.spiralCtx.strokeStyle = "white";
-            this.spiralCtx.strokeText(pitchLabels[i], center.x + r2 * s, center.y - r2 * c);
+            this.canvasCtx.beginPath();
+            this.canvasCtx.moveTo(center.x + r0 * s, center.y - r0 * c);
+            this.canvasCtx.lineTo(center.x + r1 * s, center.y - r1 * c);
+            this.canvasCtx.stroke();
+            this.canvasCtx.strokeStyle = "white";
+            this.canvasCtx.strokeText(pitchLabels[i], center.x + r2 * s, center.y - r2 * c);
         }
 
         const dp = 1 / (12 * 20)
@@ -176,26 +208,26 @@ class PitchVisualization extends React.Component<Props, State> {
             const index = Math.round(this.pitchToIndex(p, bufferLength));
             const db = Math.max(0, dataArray[index] - noiseLevel);
             const hueDegrees = this.fractionalPart(p / 3) * 360;
-            this.linePath(this.spiralCtx, lastxy, xy);
+            this.linePath(this.canvasCtx, lastxy, xy);
 
             if (db > 0) {
-                this.spiralCtx.lineWidth = 1 + db * lineWidthPerDB * offsets.radius;
-                this.spiralCtx.strokeStyle = "hsl(" + hueDegrees + ", 30%, 50%)";
+                this.canvasCtx.lineWidth = 1 + db * lineWidthPerDB * offsets.radius;
+                this.canvasCtx.strokeStyle = "hsl(" + hueDegrees + ", 30%, 50%)";
             } else {
-                this.spiralCtx.lineWidth = 1;
-                this.spiralCtx.strokeStyle = "grey";
+                this.canvasCtx.lineWidth = 1;
+                this.canvasCtx.strokeStyle = "grey";
             }
-            this.spiralCtx.stroke();
+            this.canvasCtx.stroke();
             if (db > innerLineLevel) {
-                this.linePath(this.spiralCtx, lastxy, xy);
+                this.linePath(this.canvasCtx, lastxy, xy);
                 const iDB = db - innerLineLevel;
-                this.spiralCtx.lineWidth = 1 + iDB * lineWidthPerDB * offsets.radius;
-                this.spiralCtx.strokeStyle = "hsl(" + hueDegrees + ", 100%, 70%)";
-                this.spiralCtx.stroke();
+                this.canvasCtx.lineWidth = 1 + iDB * lineWidthPerDB * offsets.radius;
+                this.canvasCtx.strokeStyle = "hsl(" + hueDegrees + ", 100%, 70%)";
+                this.canvasCtx.stroke();
             }
             lastxy = xy;
         }
-        this.spiralCtx.lineWidth = 1;
+        this.canvasCtx.lineWidth = 1;
 
         if (score >= 10) {
             const p = this.frequencyToPitch(dominantFrequency);
@@ -203,13 +235,13 @@ class PitchVisualization extends React.Component<Props, State> {
             const center = this.pitchPosition(offsets, p);
             const inner = this.pitchPosition(offsets, p, -r);
             const outer = this.pitchPosition(offsets, p, r);
-            this.spiralCtx.strokeStyle = "white";
-            this.circlePath(this.spiralCtx, center, r);
-            this.spiralCtx.lineWidth = 2;
-            this.spiralCtx.stroke();
-            this.spiralCtx.lineWidth = 1;
-            this.linePath(this.spiralCtx, inner, outer);
-            this.spiralCtx.stroke();
+            this.canvasCtx.strokeStyle = "white";
+            this.circlePath(this.canvasCtx, center, r);
+            this.canvasCtx.lineWidth = 2;
+            this.canvasCtx.stroke();
+            this.canvasCtx.lineWidth = 1;
+            this.linePath(this.canvasCtx, inner, outer);
+            this.canvasCtx.stroke();
         }
     }
 
@@ -253,8 +285,8 @@ class PitchVisualization extends React.Component<Props, State> {
     }
 
     drawingOffsets() {
-        const w = this.spiralCanvas.width;
-        const h = this.spiralCanvas.height;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
         return {
             center: {
                 x: w / 2
@@ -282,7 +314,7 @@ class PitchVisualization extends React.Component<Props, State> {
 
     render() {
         return <div className="pitch-spiral">
-            <canvas id="this.spiralCanvas" width={500} height={500}></canvas>
+            <canvas id="this.canvas" width={500} height={500}></canvas>
             <div id="textOutput">hoi</div>
         </div>;
     }

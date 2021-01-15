@@ -33,6 +33,9 @@ class PageHome extends React.Component<Props, State> {
                         <IonSegmentButton value="LINEAR">
                             <IonLabel>Linear</IonLabel>
                         </IonSegmentButton>
+                        <IonSegmentButton value="OSCILLATOR">
+                            <IonLabel>Oscillator</IonLabel>
+                        </IonSegmentButton>
                     </IonSegment>
                     <PitchVisualization displayType={this.state.displayType}></PitchVisualization>
                 </IonContent>
