@@ -19,6 +19,9 @@ class PageHome extends React.Component<Props, State> {
         }
     }
 
+    componentDidMount() {
+    }
+
     render() {
         return (
             <IonPage>
