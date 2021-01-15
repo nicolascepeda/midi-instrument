@@ -14,14 +14,35 @@ interface State {
 const noiseLevel = -60;
 const harmonics = 10;
 const pitchRange = 3;
-//const fftSize = 1024 * 16 * 2;
-const fftSize = 2048;
+const fftSize = 1024 * 16 * 2;
 const lineWidthPerDB = 0.002;
 const innerLineLevel = 20;
 const offsetCorrection = 34;
 
 const zeroPitchFrequency = (440 - offsetCorrection) * Math.pow(2, 3 / 12);
 const pitchLabels = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
+
+/*
+// Reference note:
+
+const A4 = 440;
+
+// Octave jumps:
+
+const A5 = A4 * Math.pow(2, 1); // Same as 440 * 2
+const A6 = A4 * Math.pow(2, 2); // Same as 440 * 2 * 2
+
+const A3 = A4 * Math.pow(2, -1); // Same as 440 / 2
+const A2 = A4 * Math.pow(2, -2); // Same as 440 / 2 / 2
+
+// Single note jumps:
+
+const B4 = A4 * Math.pow(2, 1/12);
+const C5 = A4 * Math.pow(2, 2/12);
+
+const G4 = A4 * Math.pow(2, -1/12);
+const F4 = A4 * Math.pow(2, -2/12);
+ */
 
 class PitchVisualization extends React.Component<Props, State> {
     // @ts-ignore
@@ -52,7 +73,7 @@ class PitchVisualization extends React.Component<Props, State> {
 
                     const analyserNode = audioCtx.createAnalyser();
                     analyserNode.fftSize = fftSize;
-                    analyserNode.smoothingTimeConstant = 0.2;
+                    analyserNode.smoothingTimeConstant = 0;
                     source.connect(analyserNode);
                     this.draw(analyserNode);
                 })
@@ -90,7 +111,7 @@ class PitchVisualization extends React.Component<Props, State> {
         let posX = 0;
         for (let i = 0; i < bufferLength; i++) {
             const barHeight = (dataArray[i] + 140) * 2;
-            this.canvasCtx.fillStyle = 'rgb(' + Math.floor(barHeight + 100) + ', 230, 230)';
+            this.canvasCtx.fillStyle = 'rgb(' + Math.floor(barHeight + 100) + ', 50, 50)';
             this.canvasCtx.fillRect(posX, this.canvas.height - barHeight / 2, barWidth, barHeight / 2);
             posX += barWidth + 1;
         }
@@ -113,7 +134,6 @@ class PitchVisualization extends React.Component<Props, State> {
 
         let sliceWidth = this.canvas.width * 1.0 / bufferLength;
         let x = 0;
-        console.log(dataArray);
 
         for(let i = 0; i < bufferLength; i++) {
             let v = dataArray[i] / 128.0;
