@@ -1,7 +1,10 @@
 import React from 'react';
-import './PitchSpiral.css';
+import './PitchVisualization.css';
+
+export type PitchDisplayType = "LINEAR" | "SPIRAL";
 
 interface Props {
+    displayType : PitchDisplayType;
 }
 
 interface State {
@@ -19,7 +22,7 @@ const offsetCorrection = 34;
 const zeroPitchFrequency = (440 - offsetCorrection) * Math.pow(2, 3 / 12);
 const pitchLabels = ["c", "", "d", "", "e", "f", "", "g", "", "a", "", "b"];
 
-class PitchSpiral extends React.Component<Props, State> {
+class PitchVisualization extends React.Component<Props, State> {
     // @ts-ignore
     private spiralCanvas: HTMLCanvasElement;
     // @ts-ignore
@@ -50,7 +53,7 @@ class PitchSpiral extends React.Component<Props, State> {
                     analyserNode.fftSize = fftSize;
                     analyserNode.smoothingTimeConstant = 0.2;
                     source.connect(analyserNode);
-                    this.draw2(analyserNode);
+                    this.draw(analyserNode);
                 })
                 .catch(function (err) {
                     console.log('The following gUM error occured: ' + err);
@@ -60,11 +63,18 @@ class PitchSpiral extends React.Component<Props, State> {
         }
     }
 
-    draw2(analyserNode: AnalyserNode) {
+    draw(analyserNode: AnalyserNode){
+        switch(this.props.displayType){
+            case "LINEAR": return this.drawLinear(analyserNode);
+            case "SPIRAL" : return this.drawSpiral(analyserNode);
+        }
+    }
+
+    drawLinear(analyserNode: AnalyserNode) {
         const bufferLength: number = analyserNode.frequencyBinCount;
         const dataArray: Float32Array = new Float32Array(bufferLength);
-        //Schedule next redraw
-        requestAnimationFrame(() => this.draw2(analyserNode));
+
+        requestAnimationFrame(() => this.draw(analyserNode));
 
         //Get spectrum data
         analyserNode.getFloatFrequencyData(dataArray);
@@ -78,13 +88,13 @@ class PitchSpiral extends React.Component<Props, State> {
         let posX = 0;
         for (let i = 0; i < bufferLength; i++) {
             const barHeight = (dataArray[i] + 140) * 2;
-            this.spiralCtx.fillStyle = 'rgb(' + Math.floor(barHeight + 100) + ', 50, 50)';
+            this.spiralCtx.fillStyle = 'rgb(' + Math.floor(barHeight + 100) + ', 230, 230)';
             this.spiralCtx.fillRect(posX, this.spiralCanvas.height - barHeight / 2, barWidth, barHeight / 2);
             posX += barWidth + 1;
         }
     }
 
-    draw(analyserNode: AnalyserNode) {
+    drawSpiral(analyserNode: AnalyserNode) {
         const bufferLength: number = analyserNode.frequencyBinCount;
         const dataArray: Float32Array = new Float32Array(bufferLength);
         const indices = {
@@ -92,7 +102,7 @@ class PitchSpiral extends React.Component<Props, State> {
             high: Math.ceil(this.pitchToIndex(pitchRange, bufferLength))
         };
 
-        setTimeout(() => this.draw(analyserNode), 100);
+        requestAnimationFrame(() => this.draw(analyserNode));
 
         analyserNode.getFloatFrequencyData(dataArray);
 
@@ -278,4 +288,4 @@ class PitchSpiral extends React.Component<Props, State> {
     }
 }
 
-export default PitchSpiral;
+export default PitchVisualization;
