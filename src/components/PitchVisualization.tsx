@@ -159,6 +159,7 @@ class PitchVisualization extends React.Component<Props, State> {
             low: Math.floor(this.pitchToIndex(-pitchRange, bufferLength)),
             high: Math.ceil(this.pitchToIndex(pitchRange, bufferLength))
         };
+        console.log("Indices: ", indices);
 
         requestAnimationFrame(() => this.draw(analyserNode));
 
