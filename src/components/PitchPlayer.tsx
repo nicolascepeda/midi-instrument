@@ -95,7 +95,7 @@ class PitchPlayer extends React.Component<Props, State> {
         }
 
         for(let id of Object.keys(this.touchNoteMap)){
-            if(activeTouches.filter(el => el == id +'').length === 0){
+            if(activeTouches.filter(el => el === id +'').length === 0){
                 stopNote(this.touchNoteMap[id] + 48);
                 delete this.touchNoteMap[id];
             }
@@ -133,7 +133,7 @@ class PitchPlayer extends React.Component<Props, State> {
             const xi = vs[i].x, yi = vs[i].y;
             const xj = vs[j].x, yj = vs[j].y;
 
-            const intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+            const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
             if (intersect) inside = !inside;
         }
         return inside;

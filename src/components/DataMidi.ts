@@ -1,4 +1,5 @@
 //import WebMidi from "webmidi";
+//"webmidi": "^2.5.1"
 import * as Tone from 'tone'
 const synth = new Tone.Synth().toDestination();
 export var output: any = undefined;
