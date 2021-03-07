@@ -13,17 +13,19 @@ class PitchPlayer extends React.Component<Props> {
     // @ts-ignore
     private canvasCtx: CanvasRenderingContext2D;
 
+    // @ts-ignore
+    private debug: HTMLElement;
+
     private config: any;
 
     async componentDidMount() {
+        this.debug = document.getElementById("this.debug") as HTMLElement;
         this.canvas = document.getElementById("this.canvas") as HTMLCanvasElement;
         this.canvasCtx = this.canvas.getContext('2d')!;
         this.canvasCtx.fillStyle = 'rgb(0, 0, 0)';
 
-        //this.canvas.addEventListener("mousedown", evt => this.mousedown(evt), false);
-        //this.canvas.addEventListener("touchmove", evt => this.touchMove(evt), false);
         this.canvas.addEventListener("touchstart", evt => this.touchStart(evt), false);
-        //this.canvas.addEventListener("touchend", evt => this.touchEnd(evt), false);
+        this.canvas.addEventListener("touchend", evt => this.touchEnd(evt), false);
         //this.canvas.addEventListener("touchcancel", evt => this.touchEnd(evt), false);
 
         this.config = {
@@ -39,20 +41,59 @@ class PitchPlayer extends React.Component<Props> {
         this.drawSpiral();
     }
 
-    async touchStart(evt: any) {
+    private touchNoteMap : any = {};
+
+    debugText(str : string) {
+        this.debug.innerHTML = str;
+    }
+
+    async touchStart(evt: TouchEvent) {
+        evt.stopPropagation();
+
         this.drawSpiral();
 
-        const touches = evt.changedTouches;
-        for (let i = 0; i < touches.length; i++) {
-            const x = touches[i].pageX - this.canvas.offsetLeft;
-            const y = touches[i].pageY - this.canvas.offsetTop;
+        for (let i = 0; i < evt.touches.length; i++) {
+            const x = evt.touches[i].pageX - this.canvas.offsetLeft;
+            const y = evt.touches[i].pageY - this.canvas.offsetTop;
 
             const note = this.noteAt(x, y);
             if(note >= 0){
+                this.touchNoteMap[evt.touches[i].identifier] = note;
                 this.drawNote(note, true);
+                this.showArmonics(note);
                 playNote(note + 48);
             }
         }
+    }
+
+    async touchEnd(evt: any) {
+        evt.stopPropagation();
+
+        this.drawSpiral();
+
+        let activeTouches : string[] = [];
+
+        for (let i = 0; i < evt.touches.length; i++) {
+            const id : string = evt.touches[i].identifier;
+            this.drawNote(this.touchNoteMap[id], true);
+            activeTouches.push(id + "");
+        }
+
+        for(let id of Object.keys(this.touchNoteMap)){
+            if(activeTouches.filter(el => el == id +'').length === 0){
+                stopNote(this.touchNoteMap[id] + 48);
+                delete this.touchNoteMap[id];
+            }
+        }
+    }
+
+    drawLoop(){
+        this.drawSpiral();
+
+        for(let id of Object.keys(this.touchNoteMap)){
+            this.drawNote(this.touchNoteMap[id], true);
+        }
+        window.requestAnimationFrame( _ => this.drawLoop());
     }
 
     noteAt(x: number, y: number) {
@@ -106,6 +147,9 @@ class PitchPlayer extends React.Component<Props> {
     }
 
     drawNote(index : number, selected : boolean){
+        if(index === undefined || index < 0 || index > this.notePolygons.length){
+            return;
+        }
         if(selected){
             this.canvasCtx.fillStyle = "red";
         } else if(noteLabels[index % 12].indexOf("#") >= 0){
@@ -127,6 +171,23 @@ class PitchPlayer extends React.Component<Props> {
         this.canvasCtx.stroke();
     }
 
+    private major = [2, 2, 1, 2, 2, 2, 1];
+    private minor = [2, 1, 2, 2, 1, 2, 2];
+
+    showArmonics(indexRoot : number){
+        let index = indexRoot;
+        for(let val of this.major){
+            index += val;
+
+            this.canvasCtx.fillStyle = "yellow";
+            this.canvasCtx.lineWidth = 2;
+            this.canvasCtx.beginPath();
+            for(let point of this.notePolygons[index]){this.canvasCtx.lineTo(point.x, point.y);}
+            this.canvasCtx.closePath();
+            this.canvasCtx.fill();
+        }
+    }
+
     drawSpiral() {
         this.cleanCanvas("black");
 
@@ -137,11 +198,16 @@ class PitchPlayer extends React.Component<Props> {
         // Draw Note Names
         for(let note = 0; note < 12; note++){
             const currAngle = this.config.rotation + (2 * Math.PI / 12) * (note + 0.5);
-            const scalar = this.config.innerDistance + 280 + currAngle;
+            const scalar = this.config.innerDistance + 180 + currAngle;
+
             const x = this.config.centerX + scalar * Math.cos(currAngle);
             const y = this.config.centerY + scalar * Math.sin(currAngle);
             this.canvasCtx.font = "30px Arial";
-            this.canvasCtx.fillStyle = "white";
+            if(noteLabels[note].indexOf("#") >= 0){
+                this.canvasCtx.fillStyle = "white";
+            } else {
+                this.canvasCtx.fillStyle = "black";
+            }
             this.canvasCtx.textBaseline = "middle";
             this.canvasCtx.textAlign = "center";
             this.canvasCtx.fillText(noteLabels[note], x, y);
@@ -157,6 +223,7 @@ class PitchPlayer extends React.Component<Props> {
     render() {
         return <div className="pitch-player">
             <canvas id="this.canvas" width={700} height={700}></canvas>
+            <div className="debug" id="this.debug"></div>
         </div>;
     }
 }

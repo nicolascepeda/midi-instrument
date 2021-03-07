@@ -4,7 +4,10 @@
     height: 100%;
     background: black;
     text-align: center;
+    touch-action: none;
 }
 
 .pitch-player canvas {
+}
+.pitch-player .debug {
 }

@@ -19,16 +19,14 @@ export function initMidi() {
 }
 
 export async function stopNote(note: number) {
-    return;
     if (useMidi) {
         output.stopNote(note)
     } else {
-        await pipeMidi({
-            midiport: 'IAC Driver Bus 1',
+        return pipeMidi({
+            midiport: 'IAC Driver Bus 2',
             midicommand: 'noteoff',
             channel: 1,
-            note: note,
-            velocity: 1
+            note: note
         });
     }
 }
@@ -43,17 +41,12 @@ export async function playNote(note: number) {
             midicommand: 'noteon',
             channel: 1,
             note: note
-        }).then(_ => pipeMidi({
-            midiport: 'IAC Driver Bus 2',
-            midicommand: 'noteoff',
-            channel: 1,
-            note: note
-        }));
+        })
     }
 }
 
 async function pipeMidi(data: any) {
-    await fetch("http://192.168.1.25:4000/sendmidi", {
+    await fetch("http://192.168.1.20:4000/sendmidi", {
         method: "POST",
         headers: {
             'Content-Type': 'application/json'
