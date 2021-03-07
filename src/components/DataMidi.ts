@@ -1,10 +1,14 @@
-import WebMidi from "webmidi";
-
+//import WebMidi from "webmidi";
+import * as Tone from 'tone'
+const synth = new Tone.Synth().toDestination();
 export var output: any = undefined;
-var useMidi: boolean = false;
+
+export type SoundType = "MIDI" | "REMOTE" | "LOCAL";
+let soundType : SoundType = "LOCAL";
 
 export function initMidi() {
-    if (useMidi) {
+    if (soundType === "MIDI") {
+        /*
         WebMidi.enable((err: any) => {
             if (err) {
                 console.log("WebMidi could not be enabled.", err);
@@ -14,14 +18,15 @@ export function initMidi() {
             }
         });
         //WebMidi.disable()
-    } else {
+         */
+    } else if(soundType === "REMOTE"){
     }
 }
 
 export async function stopNote(note: number) {
-    if (useMidi) {
-        output.stopNote(note)
-    } else {
+    if (soundType === "MIDI") {
+        //output.stopNote(note)
+    } else if(soundType === "REMOTE"){
         return pipeMidi({
             midiport: 'IAC Driver Bus 2',
             midicommand: 'noteoff',
@@ -32,16 +37,18 @@ export async function stopNote(note: number) {
 }
 
 
-export async function playNote(note: number) {
-    if (useMidi) {
-        output.playNote(note);
-    } else {
+export async function playNote(note: number, noteString : string) {
+    if (soundType === "MIDI") {
+        //output.playNote(note);
+    } else if(soundType === "REMOTE"){
         return pipeMidi({
             midiport: 'IAC Driver Bus 2',
             midicommand: 'noteon',
             channel: 1,
             note: note
         })
+    } else if(soundType === "LOCAL"){
+        synth.triggerAttackRelease(noteString, "8n");
     }
 }
 

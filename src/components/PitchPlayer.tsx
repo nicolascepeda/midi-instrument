@@ -1,13 +1,20 @@
 import React from 'react';
 import './PitchPlayer.css';
 import {playNote, stopNote} from "./DataMidi";
+import {IonLabel, IonSegment, IonSegmentButton} from "@ionic/react";
 
 interface Props {
 }
 
+type ScaleType = "MAJOR" | "MINOR";
+
+interface State {
+    scale: ScaleType;
+}
+
 const noteLabels: any[] = ["C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B"];
 
-class PitchPlayer extends React.Component<Props> {
+class PitchPlayer extends React.Component<Props, State> {
     // @ts-ignore
     private canvas: HTMLCanvasElement;
     // @ts-ignore
@@ -17,6 +24,13 @@ class PitchPlayer extends React.Component<Props> {
     private debug: HTMLElement;
 
     private config: any;
+
+    constructor(props : Props){
+        super(props);
+        this.state = {
+            scale : "MAJOR"
+        }
+    }
 
     async componentDidMount() {
         this.debug = document.getElementById("this.debug") as HTMLElement;
@@ -61,7 +75,8 @@ class PitchPlayer extends React.Component<Props> {
                 this.touchNoteMap[evt.touches[i].identifier] = note;
                 this.drawNote(note, true);
                 this.showArmonics(note);
-                playNote(note + 48);
+                const noteText = noteLabels[Math.round(note % 12)] + (Math.round(note / 12) + 2);
+                playNote(note + 48, noteText);
             }
         }
     }
@@ -174,9 +189,18 @@ class PitchPlayer extends React.Component<Props> {
     private major = [2, 2, 1, 2, 2, 2, 1];
     private minor = [2, 1, 2, 2, 1, 2, 2];
 
+    getScale(){
+        switch(this.state.scale){
+            case "MAJOR": return this.major;
+            case "MINOR": return this.minor;
+        }
+    }
+
     showArmonics(indexRoot : number){
         let index = indexRoot;
-        for(let val of this.major){
+
+
+        for(let val of this.getScale()){
             index += val;
 
             this.canvasCtx.fillStyle = "yellow";
@@ -222,6 +246,17 @@ class PitchPlayer extends React.Component<Props> {
 
     render() {
         return <div className="pitch-player">
+            <IonSegment value={this.state.scale} onIonChange={e => {
+                // @ts-ignore
+                this.setState({scale: e.detail.value});
+            }}>
+                <IonSegmentButton value="MAJOR">
+                    <IonLabel>Major</IonLabel>
+                </IonSegmentButton>
+                <IonSegmentButton value="MINOR">
+                    <IonLabel>Minor</IonLabel>
+                </IonSegmentButton>
+            </IonSegment>
             <canvas id="this.canvas" width={700} height={700}></canvas>
             <div className="debug" id="this.debug"></div>
         </div>;
